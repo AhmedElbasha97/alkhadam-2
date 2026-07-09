@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:safe_device/safe_device.dart';
+import '../../../../config/routes/routes.dart';
 import '../../../../core/cache/cache_consumer_impl.dart';
 import '../../../../core/cache/cache_keys.dart';
 import '../../../../core/dependencies/app_dependencies.dart';
@@ -230,6 +231,7 @@ class PassesCubit extends Cubit<PassesState> {
     required String name,
     String? notes,
     required File image,
+    required BuildContext context
   }) async {
     if (_unId == null) return;
 
@@ -247,7 +249,7 @@ class PassesCubit extends Cubit<PassesState> {
       );
 
       emit(StorePassSuccess());
-      // Refresh the list immediately after successful save
+      Navigator.pushReplacementNamed(context, Routes.passesScreen);
       await reloadPasses();
     } catch (e) {
       emit(StorePassError(e.toString()));

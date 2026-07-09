@@ -128,7 +128,7 @@ class _AddPassScreenState extends State<AddPassScreen>
       notes: _notesController.text.trim().isEmpty
           ? null
           : _notesController.text.trim(),
-      image: _selectedImage!,
+      image: _selectedImage!, context: context,
     );
   }
 
