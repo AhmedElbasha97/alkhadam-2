@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'package:flutter/material.dart';
+
 import '../datasources/passes_remote_datasource.dart';
 import '../models/pass_model.dart';
 import '../models/finance_model.dart';
@@ -11,6 +13,8 @@ class PassesRepository {
 
   Future<List<PassModel>> getPasses(String unId) =>
       dataSource.getPasses(unId);
+  Future<bool?> getSecurityChecker() =>
+      dataSource.secuiretyChecker();
 
   Future<Map<String, dynamic>> getTodayPassesCount(String unId) =>
       dataSource.getTodayPassesCount(unId);

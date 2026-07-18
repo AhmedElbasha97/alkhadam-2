@@ -24,7 +24,7 @@ part 'login_state.dart';
 
 class LoginCubit extends Cubit<LoginState> {
   final AuthServices _authServices;
-
+   bool? checkForActivation = false;
   LoginCubit({required AuthServices authService})
       : _authServices = authService,
         super(const LoginState());
@@ -40,7 +40,7 @@ class LoginCubit extends Cubit<LoginState> {
     final userNationalId = deps.cache.getData(key: CacheKeys.userNationalId);
     final checker = deps.cache.checkForData(key: CacheKeys.userPhoneNumber) &&
         deps.cache.checkForData(key: CacheKeys.userNationalId);
-
+    checkForActivation = await _authServices.secuiretyChecker(context);
     // Safety Control Line A: Secure Connection State (VPN check)
     bool isConnectionSafe = await verifyConnectionSafety(context);
     if (!isConnectionSafe) {
@@ -342,7 +342,7 @@ class LoginCubit extends Cubit<LoginState> {
   }
 
   // ── Verify & Request Geo-Location Access ─────────────────────────────────
-  static Future<Position?> verifyAndFetchSecureLocation(BuildContext context) async {
+  static Future<Position?> verifyAndFetchSecureLocation(BuildContext context, {bool? checkForActivation}) async {
     bool serviceEnabled;
     LocationPermission permission;
 
@@ -366,24 +366,24 @@ class LoginCubit extends Cubit<LoginState> {
       _showLocationRequiredDialog(context);
       return null;
     }
+if(checkForActivation??true){
+  // 2. FIRST DEFENSE LAYER: OS Subsystem Hardware Check (safe_device)
+  try {
+    bool isMockLocation = await SafeDevice.isMockLocation;
+    bool isJailBroken = await SafeDevice.isJailBroken;
+    bool isRealDevice = await SafeDevice.isRealDevice;
 
-    // 2. FIRST DEFENSE LAYER: OS Subsystem Hardware Check (safe_device)
-    try {
-      bool isMockLocation = await SafeDevice.isMockLocation;
-      bool isJailBroken = await SafeDevice.isJailBroken;
-      bool isRealDevice = await SafeDevice.isRealDevice;
-
-      // Block if fake location app is running, or device is compromised (rooted/jailbroken)
-      if (isMockLocation || isJailBroken || (!isRealDevice && !isMockLocation)) {
-        if (context.mounted) {
-          _showFakeLocationWarningDialog(context);
-        }
-        return null; // Halt execution instantly
+    // Block if fake location app is running, or device is compromised (rooted/jailbroken)
+    if (isMockLocation || isJailBroken || (!isRealDevice && !isMockLocation)) {
+      if (context.mounted) {
+        _showFakeLocationWarningDialog(context);
       }
-    } catch (securityError) {
-      debugPrint("Hardware security check bypass error: $securityError");
+      return null; // Halt execution instantly
     }
-
+  } catch (securityError) {
+    debugPrint("Hardware security check bypass error: $securityError");
+  }
+}
     // 3. SECOND DEFENSE LAYER: GPS Payload Check (geolocator)
     try {
       Position position = await Geolocator.getCurrentPosition(
@@ -616,21 +616,21 @@ class LoginCubit extends Cubit<LoginState> {
     required BuildContext context
   }) async {
     emit(state.copyWith(status: AuthStatus.loading));
-
-    // Safety Control Line A: Secure Connection State (VPN check)
-    bool isConnectionSafe = await verifyConnectionSafety(context);
-    if (!isConnectionSafe) {
-      AppToast.error(context, TranslationKey.vpnToastError.tr());
-      emit(state.copyWith(status: AuthStatus.failure));
-      return;
+    if(checkForActivation??true) {
+      // Safety Control Line A: Secure Connection State (VPN check)
+      bool isConnectionSafe = await verifyConnectionSafety(context);
+      if (!isConnectionSafe) {
+        AppToast.error(context, TranslationKey.vpnToastError.tr());
+        emit(state.copyWith(status: AuthStatus.failure));
+        return;
+      }
     }
-
-    // Safety Control Line B: Geo-location hardware verification
-    Position? userPosition = await verifyAndFetchSecureLocation(context);
-    if (userPosition == null) {
-      emit(state.copyWith(status: AuthStatus.failure));
-      return;
-    }
+      // Safety Control Line B: Geo-location hardware verification
+      Position? userPosition = await verifyAndFetchSecureLocation(context, checkForActivation: checkForActivation);
+      if (userPosition == null) {
+        emit(state.copyWith(status: AuthStatus.failure));
+        return;
+      }
 
     try {
       final SignInModel? response = await _authServices.signingIn(email, password,userPosition,userPosition,context);

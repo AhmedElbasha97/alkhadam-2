@@ -1,7 +1,9 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
+import 'package:flutter/cupertino.dart';
 import '../../../../core/api/api_consumer.dart';
 import '../../../../core/api/endpoints.dart';
+import '../../../../core/widgets/toast_widget.dart';
 import '../models/pass_model.dart';
 import '../models/finance_model.dart';
 
@@ -43,6 +45,20 @@ class PassesRemoteDataSource {
       data: {'un_id': unId},
     );
     return FinanceModel.fromJson(response.data as Map<String, dynamic>);
+  }
+  Future<bool?> secuiretyChecker(
+
+      ) async {
+    try {
+      final response = await _apiService.postData(url: EndPoints.securityCheck, data: {
+
+      });
+      final status = response.data['status'];
+      return status == "true";
+    } catch(e){
+
+      return null;
+    }
   }
 
   // ─── Store pass ───────────────────────────────────────────────────────────

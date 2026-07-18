@@ -15,6 +15,7 @@ import 'passes_state.dart';
 class PassesCubit extends Cubit<PassesState> {
   final PassesRepository repository;
   final EncryptedCacheConsumerImpl storage;
+  bool? checkForActivation = false;
 
   /// Cached open-screen coordinates — set once when screen first opens.
   double _openLat = 0.0;
@@ -49,8 +50,10 @@ class PassesCubit extends Cubit<PassesState> {
         repository.getPasses(_unId!),
         repository.getTodayPassesCount(_unId!),
         repository.checkFinance(_unId!),
-      ]);
 
+
+      ]);
+checkForActivation =await repository.getSecurityChecker();
       final passes = results[0] as List<dynamic>?;
       final countData = results[1] as Map<String, dynamic>;
       final finance = results[2] as dynamic;
@@ -140,17 +143,18 @@ class PassesCubit extends Cubit<PassesState> {
     }
 
     // Guard 3 — VPN check
-    try {
-      final isVpnActive = await CheckVpnConnection.isVpnActive();
-      if (isVpnActive) {
-        emit(ShowVpnBlockedDialog());
-        _restorePreviousStateSafely(currentState);
-        return;
+    if(checkForActivation??true) {
+      try {
+        final isVpnActive = await CheckVpnConnection.isVpnActive();
+        if (isVpnActive) {
+          emit(ShowVpnBlockedDialog());
+          _restorePreviousStateSafely(currentState);
+          return;
+        }
+      } catch (_) {
+        // If VPN check fails we allow through — better UX than blocking.
       }
-    } catch (_) {
-      // If VPN check fails we allow through — better UX than blocking.
     }
-
     // Guard 4 — location permission + mock detection
     final position = await _verifyLocation(currentState);
     if (position == null) {
@@ -190,23 +194,23 @@ class PassesCubit extends Cubit<PassesState> {
       _restorePreviousStateSafely(currentState);
       return null;
     }
+if(checkForActivation??true) {
+  // Hardware / jailbreak / mock check
+  try {
+    final isMock = await SafeDevice.isMockLocation;
+    final isJailBroken = await SafeDevice.isJailBroken;
+    final isRealDevice = await SafeDevice.isRealDevice;
 
-    // Hardware / jailbreak / mock check
-    try {
-      final isMock = await SafeDevice.isMockLocation;
-      final isJailBroken = await SafeDevice.isJailBroken;
-      final isRealDevice = await SafeDevice.isRealDevice;
-
-      if (isMock || isJailBroken || (!isRealDevice && !isMock)) {
-        emit(ShowFakeLocationDialog());
-        _restorePreviousStateSafely(currentState);
-        return null;
-      }
-    } catch (_) {
-      // Security check bypass — allow through with a debug note.
-      debugPrint('PassesCubit: hardware security check failed silently.');
+    if (isMock || isJailBroken || (!isRealDevice && !isMock)) {
+      emit(ShowFakeLocationDialog());
+      _restorePreviousStateSafely(currentState);
+      return null;
     }
-
+  } catch (_) {
+    // Security check bypass — allow through with a debug note.
+    debugPrint('PassesCubit: hardware security check failed silently.');
+  }
+}
     try {
       // 💡 FIXED: Uses modern Geolocator syntax to prevent build errors
       final position = await Geolocator.getCurrentPosition(

@@ -1,6 +1,7 @@
 class EndPoints {
 //home screen_______________________________
   static const String countriesCities = '/equipment/locations'; //get
+  static const String securityCheck = '/mobile/security';
   // Catalogue screen_______________________________
   static const String getProducts = '/equipment/products'; //get
   static const String getCategories = '/equipment/categories'; //get

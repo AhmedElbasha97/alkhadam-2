@@ -37,6 +37,20 @@ class AuthServices {
       return null;
     }
   }
+  Future<bool?> secuiretyChecker(
+      BuildContext context
+      ) async {
+    try {
+      final response = await _api.postData(url: EndPoints.securityCheck, data: {
+
+      });
+      final status = response.data['status'];
+      return status == "true";
+    } catch(e){
+      AppToast.error(context, e.toString());
+      return null;
+    }
+  }
 
   Future<String?> resendSigningUpOtp(String email) async {
 
